@@ -246,14 +246,36 @@ template Keccak256Hex(maxRounds) {
 	}
     }
 
-    // the multiplexer layout
+    // mux
+    //                 ┌──────────┐        ┌─────┐
+    //                 │selector_n├────────┤     │
+    //                 └──────────┘        │     │
+    //                                     │     │
+    //          ┌─────────────────┐        │     │
+    //          │result_of_round_0├────┐   │     │
+    //          └─────────────────┘    │   │     │
+    //                                 │   │     │    ┌─────────────────┐
+    //          ┌─────────────────┐    │   │ mux ├────┤result_of_round_n│
+    //          │result_of_round_1├────┼───┤     │    └─────────────────┘
+    //          └─────────────────┘    │   │     │
+    //                   .             │   │     │
+    //                   .             │   │     │
+    //                   .             │   │     │
+    //  ┌─────────────────────────┐    │   │     │
+    //  │result_of_round_maxRoun-1├────┘   │     │
+    //  └─────────────────────────┘        └─────┘
+    // input layout
     // s_0_0, s_0_1,...,s_0_1599
     // s_1_0, s_1_1,...,s_1_1599
     // ...
     // s_maxRounds_0, s_maxRounds_1,...,s_maxRounds_1599
-    // 
+    //
     // each row represents the output of the round of that row index
     // the selector.sel specifies which row we want and selector.out is rows[rounds - 1]
+    //
+    // output layout
+    // s_0, s_1,...,s_1599
+    // the selected round output 
     component selector = Multiplexer(1600, maxRounds);
     for (var idx = 0; idx < maxRounds; idx++) {
 	for (var sIdx = 0; sIdx < 1600; sIdx++) {
