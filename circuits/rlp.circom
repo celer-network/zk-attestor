@@ -373,6 +373,7 @@ template RlpArrayCheck(maxHexLen, nFields, arrayPrefixMaxHexLen, fieldMinHexLen,
     }
     totalArray.sel <== rlpArrayPrefix.isBig * (arrayRlpPrefix1HexLen - 1);
 
+    // definition as actual data hex len, if this isBig. the second part data = totalArray.out[0] represent the playload len. 
     signal totalArrayHexLen;
     totalArrayHexLen <== rlpArrayPrefix.prefixOrTotalHexLen + rlpArrayPrefix.isBig * (2 * totalArray.out[0] - rlpArrayPrefix.prefixOrTotalHexLen);
     
