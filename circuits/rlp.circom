@@ -357,11 +357,16 @@ template RlpArrayCheck(maxHexLen, nFields, arrayPrefixMaxHexLen, fieldMinHexLen,
     signal arrayRlpPrefix1HexLen;
     arrayRlpPrefix1HexLen <== rlpArrayPrefix.isBig * rlpArrayPrefix.prefixOrTotalHexLen;
 
-    // the Multiplerxer for len > 55 bytes scenario, selector actual value from maxLength data
+    // the Multiplerxer for len > 55 bytes scenario, the prefix include 3 parts, The second part is the length of total payload, 
+    // the inputs is: 
+    // a_0_0
+    // a_1_0
+    // ...
+    // a_arrayPrefixMaxHexLen_0
+    // selector second part of prefix hex from inputs
     component totalArray = Multiplexer(1, arrayPrefixMaxHexLen);
     var temp = 0;
     for (var idx = 0; idx < arrayPrefixMaxHexLen; idx++) {
-        // the actual data start from idx 2
         temp = 16 * temp + in[2 + idx];
 	    totalArray.inp[idx][0] <== temp;
     }
