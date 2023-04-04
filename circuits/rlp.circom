@@ -367,6 +367,7 @@ template RlpArrayCheck(maxHexLen, nFields, arrayPrefixMaxHexLen, fieldMinHexLen,
     component totalArray = Multiplexer(1, arrayPrefixMaxHexLen);
     var temp = 0;
     for (var idx = 0; idx < arrayPrefixMaxHexLen; idx++) {
+        // for big(>55), first 2 hex is parts 0 (0xf7 + part2 length), we just care about part2 here.
         temp = 16 * temp + in[2 + idx];
 	    totalArray.inp[idx][0] <== temp;
     }
