@@ -380,6 +380,7 @@ template RlpArrayCheck(maxHexLen, nFields, arrayPrefixMaxHexLen, fieldMinHexLen,
     component fieldHexLenMulti[nFields];
     signal field_temp[nFields];
     
+    // start to decode the all fields in array
     for (var idx = 0; idx < nFields; idx++) {
         var lenPrefixMaxHexs = 2 * (log_ceil(fieldMaxHexLen[idx]) \ 8 + 1);
         if (idx == 0) {
@@ -397,6 +398,7 @@ template RlpArrayCheck(maxHexLen, nFields, arrayPrefixMaxHexLen, fieldMinHexLen,
             shiftToFieldRlps[idx].shift <== 2 + arrayRlpPrefix1HexLen;
 	    } else {
 	        for (var j = 0; j < maxHexLen; j++) {
+                // left move to last field hex length
                 shiftToFieldRlps[idx].in[j] <== shiftToField[idx - 1].out[j];
             }
 	        shiftToFieldRlps[idx].shift <== fieldHexLen[idx - 1];
@@ -414,6 +416,8 @@ template RlpArrayCheck(maxHexLen, nFields, arrayPrefixMaxHexLen, fieldMinHexLen,
             fieldHexLenMulti[idx].inp[j][0] <== temp;
         }
         fieldHexLenMulti[idx].sel <== fieldPrefix[idx].isBig * (fieldRlpPrefix1HexLen[idx] - 1);
+
+        // get the actual prefix length, fieldHexLen can met all case of variable-length for literal or < 55byte or > 55bytes
         var temp2 = (2 * fieldHexLenMulti[idx].out[0] - fieldPrefix[idx].prefixOrTotalHexLen);
         field_temp[idx] <== fieldPrefix[idx].prefixOrTotalHexLen + fieldPrefix[idx].isBig * temp2;
         fieldHexLen[idx] <== field_temp[idx] + 2 * fieldPrefix[idx].isLiteral - field_temp[idx] * fieldPrefix[idx].isLiteral;
