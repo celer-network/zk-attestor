@@ -213,6 +213,7 @@ template ShiftLeft(nIn, minShift, maxShift) {
 template RlpArrayPrefix() {
     signal input in[2];
     signal output isBig;
+    // get the len of array data
     signal output prefixOrTotalHexLen;	
     signal output isValid;
 
@@ -245,6 +246,11 @@ template RlpArrayPrefix() {
     var prefixVal = 16 * in[0] + in[1];
     isValid <== 1 - lt1.out;
     signal lenTemp;
+
+    // 2 * (prefixVal - 0xc0 ) + 2 * isBig * (0xc0 - 0xf7)
+    // 0 -55 bytes long RLP encoding consists of a single byte with value 0xc0 plus the length of the list. 
+    // > 55 bytes, The first one is a single byte with value 0xf7 plus the length in bytes of the second part
+
     lenTemp <== 2 * (prefixVal - 16 * 12) + 2 * isBig * (16 * 12 - 16 * 15 - 7);
     prefixOrTotalHexLen <== isValid * lenTemp;
 
@@ -320,6 +326,7 @@ template RlpFieldPrefix() {
 }
 
 // fieldMinHexLens, fieldMaxHexLens are arrays of length nFields
+// check RLP array validity, encoded data looks like (RLP(Array[RLP(Filed), RLP(Field)]))
 template RlpArrayCheck(maxHexLen, nFields, arrayPrefixMaxHexLen, fieldMinHexLen, fieldMaxHexLen) {
     signal input in[maxHexLen];
 
@@ -346,14 +353,17 @@ template RlpArrayCheck(maxHexLen, nFields, arrayPrefixMaxHexLen, fieldMinHexLen,
     rlpArrayPrefix.in[0] <== in[0];
     rlpArrayPrefix.in[1] <== in[1];
 
+    // when >55 bytes, the prefix len
     signal arrayRlpPrefix1HexLen;
     arrayRlpPrefix1HexLen <== rlpArrayPrefix.isBig * rlpArrayPrefix.prefixOrTotalHexLen;
 
+    // the Multiplerxer for len > 55 bytes scenario, selector actual value from maxLength data
     component totalArray = Multiplexer(1, arrayPrefixMaxHexLen);
     var temp = 0;
     for (var idx = 0; idx < arrayPrefixMaxHexLen; idx++) {
+        // the actual data start from idx 2
         temp = 16 * temp + in[2 + idx];
-	totalArray.inp[idx][0] <== temp;
+	    totalArray.inp[idx][0] <== temp;
     }
     totalArray.sel <== rlpArrayPrefix.isBig * (arrayRlpPrefix1HexLen - 1);
 
@@ -374,48 +384,48 @@ template RlpArrayCheck(maxHexLen, nFields, arrayPrefixMaxHexLen, fieldMinHexLen,
         var lenPrefixMaxHexs = 2 * (log_ceil(fieldMaxHexLen[idx]) \ 8 + 1);
         if (idx == 0) {
             shiftToFieldRlps[idx] = ShiftLeft(maxHexLen, 0, 2 + arrayPrefixMaxHexLen);
-	} else {
+	    } else {
             shiftToFieldRlps[idx] = ShiftLeft(maxHexLen, fieldMinHexLen[idx - 1], fieldMaxHexLen[idx - 1]);
-	}
+	    }
         shiftToField[idx] = ShiftLeft(maxHexLen, 0, lenPrefixMaxHexs);
         fieldPrefix[idx] = RlpFieldPrefix();
 	
         if (idx == 0) {	
-	    for (var j = 0; j < maxHexLen; j++) {
+            for (var j = 0; j < maxHexLen; j++) {
                 shiftToFieldRlps[idx].in[j] <== in[j];
             }
-	    shiftToFieldRlps[idx].shift <== 2 + arrayRlpPrefix1HexLen;
-	} else {
-	    for (var j = 0; j < maxHexLen; j++) {
+            shiftToFieldRlps[idx].shift <== 2 + arrayRlpPrefix1HexLen;
+	    } else {
+	        for (var j = 0; j < maxHexLen; j++) {
                 shiftToFieldRlps[idx].in[j] <== shiftToField[idx - 1].out[j];
             }
-	    shiftToFieldRlps[idx].shift <== fieldHexLen[idx - 1];
-	}
+	        shiftToFieldRlps[idx].shift <== fieldHexLen[idx - 1];
+	    }
 	
-	fieldPrefix[idx].in[0] <== shiftToFieldRlps[idx].out[0];
-	fieldPrefix[idx].in[1] <== shiftToFieldRlps[idx].out[1];
+        fieldPrefix[idx].in[0] <== shiftToFieldRlps[idx].out[0];
+        fieldPrefix[idx].in[1] <== shiftToFieldRlps[idx].out[1];
 
         fieldRlpPrefix1HexLen[idx] <== fieldPrefix[idx].isBig * fieldPrefix[idx].prefixOrTotalHexLen;
 
-	fieldHexLenMulti[idx] = Multiplexer(1, lenPrefixMaxHexs);
-	var temp = 0;
-	for (var j = 0; j < lenPrefixMaxHexs; j++) {
+        fieldHexLenMulti[idx] = Multiplexer(1, lenPrefixMaxHexs);
+        var temp = 0;
+        for (var j = 0; j < lenPrefixMaxHexs; j++) {
             temp = 16 * temp + shiftToFieldRlps[idx].out[2 + j];
-	    fieldHexLenMulti[idx].inp[j][0] <== temp;
-	}
-	fieldHexLenMulti[idx].sel <== fieldPrefix[idx].isBig * (fieldRlpPrefix1HexLen[idx] - 1);
-	var temp2 = (2 * fieldHexLenMulti[idx].out[0] - fieldPrefix[idx].prefixOrTotalHexLen);
-	field_temp[idx] <== fieldPrefix[idx].prefixOrTotalHexLen + fieldPrefix[idx].isBig * temp2;
-	fieldHexLen[idx] <== field_temp[idx] + 2 * fieldPrefix[idx].isLiteral - field_temp[idx] * fieldPrefix[idx].isLiteral;
+            fieldHexLenMulti[idx].inp[j][0] <== temp;
+        }
+        fieldHexLenMulti[idx].sel <== fieldPrefix[idx].isBig * (fieldRlpPrefix1HexLen[idx] - 1);
+        var temp2 = (2 * fieldHexLenMulti[idx].out[0] - fieldPrefix[idx].prefixOrTotalHexLen);
+        field_temp[idx] <== fieldPrefix[idx].prefixOrTotalHexLen + fieldPrefix[idx].isBig * temp2;
+        fieldHexLen[idx] <== field_temp[idx] + 2 * fieldPrefix[idx].isLiteral - field_temp[idx] * fieldPrefix[idx].isLiteral;
 
-	for (var j = 0; j < maxHexLen; j++) {
+        for (var j = 0; j < maxHexLen; j++) {
             shiftToField[idx].in[j] <== shiftToFieldRlps[idx].out[j];
         }
-	shiftToField[idx].shift <== 2 + fieldRlpPrefix1HexLen[idx] - fieldPrefix[idx].isLiteral * (2 + fieldRlpPrefix1HexLen[idx]);
+        shiftToField[idx].shift <== 2 + fieldRlpPrefix1HexLen[idx] - fieldPrefix[idx].isLiteral * (2 + fieldRlpPrefix1HexLen[idx]);
 
-	for (var j = 0; j < maxHexLen; j++) {
-	    fields[idx][j] <== shiftToField[idx].out[j];
-	}
+        for (var j = 0; j < maxHexLen; j++) {
+            fields[idx][j] <== shiftToField[idx].out[j];
+        }
     }
 
     var check = rlpArrayPrefix.isValid;
@@ -445,6 +455,6 @@ template RlpArrayCheck(maxHexLen, nFields, arrayPrefixMaxHexLen, fieldMinHexLen,
     for (var idx = 0; idx < nFields; idx++) {
         for (var j = 0; j < maxHexLen; j++) {
             log(fields[idx][j]);
-	}
+	    }
     }
 }
