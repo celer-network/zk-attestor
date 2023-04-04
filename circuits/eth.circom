@@ -26,6 +26,8 @@ template EthBlockHashHex() {
         log(blockRlpHexs[idx]);
     }
 
+    // each element in the two arrays corresponds to a field in block header.
+    // they are missing the field WithdrawalsHash (fixed len 64) since when they wrote this it didn't exist yet.
     component rlp = RlpArrayCheck(1112, 16, 4,
         	      	    	  [64, 64, 40, 64, 64, 64, 512,  0, 0, 0, 0, 0,  0, 64, 16,  0],
 				  [64, 64, 40, 64, 64, 64, 512, 14, 6, 8, 8, 8, 64, 64, 18, 10]);
