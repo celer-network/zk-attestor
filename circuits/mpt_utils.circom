@@ -8,8 +8,14 @@ include "./keccak.circom";
 include "./rlp.circom";
 
 template LeafCheck(maxKeyHexLen, maxValueHexLen) {
+
+    // key prefix hex len + (maxkeyHexLen + 0x prefix len) + maximum value hex len + maxValueHexLen
     var maxLeafRlpHexLen = 4 + (maxKeyHexLen + 2) + 4 + maxValueHexLen;
+
+    // in bits
     var LEAF_BITS = log_ceil(maxLeafRlpHexLen);
+
+    // arrayPrefixMaxHexLen = 2 * bytes (bits \ 8 + 1), in leafCheck case, the arrayPrefixMaxHexLen = 2
     var arrayPrefixMaxHexLen = 2 * (LEAF_BITS \ 8 + 1);
 
     // FIXME: Differentiate between cases where keyLen is 0 and where the prefix+nibble is '1b'
