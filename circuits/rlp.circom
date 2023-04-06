@@ -134,24 +134,24 @@ template ShiftRight(nIn, nInBits) {
     signal shifts[nInBits][nIn];
     for (var idx = 0; idx < nInBits; idx++) {
         if (idx == 0) {
-	    for (var j = 0; j < min((1 << idx), nIn); j++) {
+            for (var j = 0; j < min((1 << idx), nIn); j++) {
                 shifts[0][j] <== - n2b.out[idx] * in[j] + in[j];
             }
-	    for (var j = (1 << idx); j < nIn; j++) {
-	        var tempIdx = j - (1 << idx);
+            for (var j = (1 << idx); j < nIn; j++) {
+                var tempIdx = j - (1 << idx);
                 shifts[0][j] <== n2b.out[idx] * (in[tempIdx] - in[j]) + in[j];
             }
-	} else {
-	    for (var j = 0; j < min((1 << idx), nIn); j++) {
-	        var prevIdx = idx - 1;
+        } else {
+            for (var j = 0; j < min((1 << idx), nIn); j++) {
+                var prevIdx = idx - 1;
                 shifts[idx][j] <== - n2b.out[idx] * shifts[prevIdx][j] + shifts[prevIdx][j];
-	    }
-	    for (var j = (1 << idx); j < nIn; j++) {
-	        var prevIdx = idx - 1;
-		var tempIdx = j - (1 << idx);
+            }
+            for (var j = (1 << idx); j < nIn; j++) {
+                var prevIdx = idx - 1;
+                var tempIdx = j - (1 << idx);
                 shifts[idx][j] <== n2b.out[idx] * (shifts[prevIdx][tempIdx] - shifts[prevIdx][j]) + shifts[prevIdx][j];
             }
-	}
+        }
     }
     for (var i = 0; i < nIn; i++) {
         out[i] <== shifts[nInBits - 1][i];
