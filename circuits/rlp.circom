@@ -181,30 +181,31 @@ template ShiftLeft(nIn, minShift, maxShift) {
     if (minShift == maxShift) {
         n2b.in <== 0;
         for (var i = 0; i < nIn; i++) {
-	    out[i] <== in[(i + minShift) % nIn];
-	}
+	        out[i] <== in[(i + minShift) % nIn];
+	    }
     } else {
-	n2b.in <== shift - minShift;
+	    n2b.in <== shift - minShift;
 
-	for (var idx = 0; idx < shiftBits; idx++) {
-            if (idx == 0) {
-	        for (var j = 0; j < nIn; j++) {
-	            var tempIdx = (j + minShift + (1 << idx)) % nIn;
-		    var tempIdx2 = (j + minShift) % nIn;
-                    shifts[0][j] <== n2b.out[idx] * (in[tempIdx] - in[tempIdx2]) + in[tempIdx2];
-                }
-            } else {
-	        for (var j = 0; j < nIn; j++) {
-	            var prevIdx = idx - 1;
-		    var tempIdx = (j + (1 << idx)) % nIn;
+        for (var idx = 0; idx < shiftBits; idx++) {
+                if (idx == 0) {
+                    for (var j = 0; j < nIn; j++) {
+                        var tempIdx = (j + minShift + (1 << idx)) % nIn;
+                        var tempIdx2 = (j + minShift) % nIn;
+                        shifts[0][j] <== n2b.out[idx] * (in[tempIdx] - in[tempIdx2]) + in[tempIdx2];
+                    }
+                } else {
+                    for (var j = 0; j < nIn; j++) {
+                    var prevIdx = idx - 1;
+                    var tempIdx = (j + (1 << idx)) % nIn;
                     shifts[idx][j] <== n2b.out[idx] * (shifts[prevIdx][tempIdx] - shifts[prevIdx][j]) + shifts[prevIdx][j];
-		}
-            }
-	}
+                    }
+                }
+        }
         for (var i = 0; i < nIn; i++) {
-	    out[i] <== shifts[shiftBits - 1][i];
-	}
+	        out[i] <== shifts[shiftBits - 1][i];
+	    }
     }
+
     for (var idx = 0; idx < nIn; idx++) {
         log(out[idx]);
     }
