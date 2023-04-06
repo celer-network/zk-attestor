@@ -613,6 +613,8 @@ template EthTransactionProof(maxDepth, maxIndex, maxTxRlpHexLen) {
     methodId <== isCall * temp;
 }
 
+/// addressMaxDepth: 8
+/// storageMaxDepth: 8
 template EthAddressStorageProof(addressMaxDepth, storageMaxDepth) {
     // 128 bits = big endian expression of hexes
     signal input blockHash[2];    // 128 bit coordinates
@@ -625,9 +627,9 @@ template EthAddressStorageProof(addressMaxDepth, storageMaxDepth) {
     // address proof input
     var addressKeyHexLen = 64;
     var addressMaxValueHexLen = 228;
-    var addressMaxLeafRlpHexLen = 4 + (addressKeyHexLen + 2) + 4 + addressMaxValueHexLen;
+    var addressMaxLeafRlpHexLen = 4 + (addressKeyHexLen + 2) + 4 + addressMaxValueHexLen; // 302
     var addressMaxBranchRlpHexLen = 1064;
-    var addressMaxExtensionRlpHexLen = 4 + 2 + addressKeyHexLen + 2 + 64;
+    var addressMaxExtensionRlpHexLen = 4 + 2 + addressKeyHexLen + 2 + 64; // 136
 
     signal input addressKeyFragmentStarts[addressMaxDepth];
 
@@ -645,9 +647,9 @@ template EthAddressStorageProof(addressMaxDepth, storageMaxDepth) {
     // storage proof inputs
     var storageKeyHexLen = 64;
     var storageMaxValueHexLen = 66;
-    var storageMaxLeafRlpHexLen = 4 + (storageKeyHexLen + 2) + 4 + storageMaxValueHexLen;
+    var storageMaxLeafRlpHexLen = 4 + (storageKeyHexLen + 2) + 4 + storageMaxValueHexLen; // 140
     var storageMaxBranchRlpHexLen = 1064;
-    var storageMaxExtensionRlpHexLen = 4 + 2 + storageKeyHexLen + 2 + 64;
+    var storageMaxExtensionRlpHexLen = 4 + 2 + storageKeyHexLen + 2 + 64; // 136
 
     signal input storageKeyFragmentStarts[storageMaxDepth];
 
@@ -707,6 +709,7 @@ template EthAddressStorageProof(addressMaxDepth, storageMaxDepth) {
 	block_hash.blockRlpHexs[idx] <== blockRlpHexs[idx];
     }
 
+    // Check rlp decoded block hash match input block hash
     component block_hash_check = ArrayEq(64);
     for (var idx = 0; idx < 64; idx++) {
 	block_hash_check.a[idx] <== block_hash.blockHashHexs[idx];
@@ -716,6 +719,7 @@ template EthAddressStorageProof(addressMaxDepth, storageMaxDepth) {
 
     // check address proof
     component address_proof = EthAddressProof(addressMaxDepth);
+    // Using rlp decoded state root to get account info
     for (var idx = 0; idx < 64; idx++) {
 	address_proof.stateRootHexs[idx] <== block_hash.stateRoot[idx];
     }
@@ -744,6 +748,7 @@ template EthAddressStorageProof(addressMaxDepth, storageMaxDepth) {
     // check storage proof
     component storage_proof = EthStorageProof(storageMaxDepth);
     for (var idx = 0; idx < 64; idx++) {
+    // Using storage root retrieved from account info
 	storage_proof.storageRootHexs[idx] <== address_proof.storageRootHexs[idx];
     }
     for (var idx = 0; idx < 64; idx++) {
@@ -768,11 +773,13 @@ template EthAddressStorageProof(addressMaxDepth, storageMaxDepth) {
     }
     storage_proof.depth <== storageDepth;
     
+    // If and only if all three check pass, slot/value check pass.
     component final_check = IsEqual();
     final_check.in[0] <== 3;
     final_check.in[1] <== block_hash_check.out + address_proof.out + storage_proof.out;
     out <== final_check.out;
 
+    // Convert slot value 4-bit array back to slot value 
     component shift = ShiftRight(64, 9);
     for (var idx = 0; idx < 64; idx++) {
          shift.in[idx] <== storage_proof.slotValue[idx];
@@ -782,11 +789,13 @@ template EthAddressStorageProof(addressMaxDepth, storageMaxDepth) {
     for (var idx = 0; idx < 2; idx++) {
         var temp = 0;
         for (var j = 0; j < 32; j++) {
+        // Since we use two value to represent a byte, base will be 16 (4-bit)
 	    temp = temp + shift.out[32 * idx + j] * (16 ** (31 - j));
 	}
     	slotValue[idx] <== temp;
     }
 
+    // Convert block hash 4-bit array back to block hash
     component blockNumberShift = ShiftRight(6, 3);
     for (var idx = 0; idx < 6; idx++) {
         blockNumberShift.in[idx] <== block_hash.number[idx];

@@ -12,16 +12,18 @@ include "./mpt_utils.circom";
 // Proves inclusion of (key, value) in a MPT
 // Assumes all keys have a fixed bit length, so that branches have length 16 only
 // and all paths terminate in a leaf
+
+// keyHexLen: 64 
 template MPTInclusionFixedKeyHexLen(maxDepth, keyHexLen, maxValueHexLen) {
     var maxLeafRlpHexLen = 4 + (keyHexLen + 2) + 4 + maxValueHexLen;
     var maxBranchRlpHexLen = 1064;
     var maxExtensionRlpHexLen = 4 + 2 + keyHexLen + 2 + 64;
 
-    var KEY_BITS = log_ceil(keyHexLen);
+    var KEY_BITS = log_ceil(keyHexLen); // log_ceil(64) = 6
     
     signal input keyHexs[keyHexLen];
     signal input valueHexs[maxValueHexLen];
-    signal input rootHashHexs[64];
+    signal input rootHashHexs[64]; // 32-bytes root hash. Each bytes will be represented by two value. e.g 0xa1 ==> [10, 1]
 
     signal input keyFragmentStarts[maxDepth];
     
